@@ -27,4 +27,7 @@ stm32f1_mpu6050\mpu6050.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_fla
 stm32f1_mpu6050\mpu6050.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_i2c.h
 stm32f1_mpu6050\mpu6050.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_pwr.h
 stm32f1_mpu6050\mpu6050.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h
+stm32f1_mpu6050\mpu6050.o: ..\MPU6050\MPU6050_dmp.h
+stm32f1_mpu6050\mpu6050.o: ..\MPU6050\MPU6050.h
 stm32f1_mpu6050\mpu6050.o: F:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
+stm32f1_mpu6050\mpu6050.o: F:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h

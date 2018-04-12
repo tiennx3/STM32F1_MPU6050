@@ -881,7 +881,7 @@ int8_t 	I2Cdev_writeByte(uint8_t devAddr, uint8_t regAddr, uint8_t data);
 int8_t 	I2Cdev_writeWord(uint8_t devAddr, uint8_t regAddr, uint16_t data);
 int8_t 	I2Cdev_writeBytes(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint8_t *data);
 int8_t 	I2Cdev_writeWords(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint16_t *data);
-
+void GPIO_Init_IRQ(GPIO_TypeDef  *GPIOx, uint8_t GPIO_Pin, IRQn_Type IRQn );
 
 /* C++ detection */
 #ifdef __cplusplus

@@ -25,3 +25,12 @@ stm32f1_mpu6050\main.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_flash_
 stm32f1_mpu6050\main.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_i2c.h
 stm32f1_mpu6050\main.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_pwr.h
 stm32f1_mpu6050\main.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h
+stm32f1_mpu6050\main.o: ..\MPU6050\MPU6050.h
+stm32f1_mpu6050\main.o: F:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
+stm32f1_mpu6050\main.o: ..\MPU6050\MPU6050_dmp.h
+stm32f1_mpu6050\main.o: ..\MPU6050\MPU6050.h
+stm32f1_mpu6050\main.o: F:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
+stm32f1_mpu6050\main.o: F:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
+stm32f1_mpu6050\main.o: ..\MPU6050\MPU6050_dmp_6axis_MotionApps20.h
+stm32f1_mpu6050\main.o: ..\MPU6050\helper_3dmath.h
+stm32f1_mpu6050\main.o: F:\Keil_v5\ARM\ARMCC\Bin\..\include\math.h

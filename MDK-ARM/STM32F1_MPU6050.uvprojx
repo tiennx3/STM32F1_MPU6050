@@ -335,7 +335,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32F103xB</Define>
               <Undefine></Undefine>
-              <IncludePath>../Inc; ../Drivers/STM32F1xx_HAL_Driver/Inc; ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy; ../Drivers/CMSIS/Device/ST/STM32F1xx/Include; ../Drivers/CMSIS/Include</IncludePath>
+              <IncludePath>../Inc;../Drivers/STM32F1xx_HAL_Driver/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32F1xx/Include;../Drivers/CMSIS/Include;..\MPU6050</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -395,19 +395,16 @@
               <FilePath>..\MPU6050\MPU6050.c</FilePath>
             </File>
             <File>
-              <FileName>tm_stm32_mpu6050_dmp.c</FileName>
+              <FileName>MPU6050_dmp.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\MPU6050\tm_stm32_mpu6050_dmp.c</FilePath>
+              <FilePath>..\MPU6050\MPU6050_dmp.c</FilePath>
             </File>
             <File>
-              <FileName>tm_stm32_mpu6050_dmp_6axis_MotionApps20.c</FileName>
+              <FileName>MPU6050_dmp_6axis_MotionApps20.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\MPU6050\tm_stm32_mpu6050_dmp_6axis_MotionApps20.c</FilePath>
+              <FilePath>..\MPU6050\MPU6050_dmp_6axis_MotionApps20.c</FilePath>
             </File>
           </Files>
-        </Group>
-        <Group>
-          <GroupName>::CMSIS</GroupName>
         </Group>
         <Group>
           <GroupName>Application/User</GroupName>
@@ -513,6 +510,9 @@
               <FilePath>../Src/system_stm32f1xx.c</FilePath>
             </File>
           </Files>
+        </Group>
+        <Group>
+          <GroupName>::CMSIS</GroupName>
         </Group>
       </Groups>
     </Target>

@@ -1,4 +1,3 @@
-
 #include "MPU6050_dmp.h"
 
 MPU6050_t mpu6050;
@@ -26,6 +25,7 @@ void MPU6050_initialize(void) {
     MPU6050_setFullScaleAccelRange(MPU6050_ACCEL_FS_2);
     MPU6050_setSleepEnabled_dmp(false); // thanks to Jack Elston for pointing this one out!
 }
+
 /** Verify the I2C connection.
  * Make sure the device is connected and responds as expected.
  * @return True if connection is valid, false otherwise
@@ -3355,4 +3355,26 @@ int8_t I2Cdev_writeBitsW(uint8_t dev_addr, uint8_t reg_addr, uint8_t start_bit,
     else {
         return err;
     }
+}
+
+void GPIO_Init_IRQ(GPIO_TypeDef  *GPIOx, uint8_t GPIO_Pin, IRQn_Type IRQn )
+{
+
+  GPIO_InitTypeDef GPIO_InitStruct;
+
+  /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOD_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*Configure GPIO pin : PA0 */
+  GPIO_InitStruct.Pin = GPIO_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOx, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(IRQn);
+	
 }

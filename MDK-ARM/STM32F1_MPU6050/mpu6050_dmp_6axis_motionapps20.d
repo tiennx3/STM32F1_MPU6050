@@ -29,6 +29,7 @@ stm32f1_mpu6050\mpu6050_dmp_6axis_motionapps20.o: ../Drivers/STM32F1xx_HAL_Drive
 stm32f1_mpu6050\mpu6050_dmp_6axis_motionapps20.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h
 stm32f1_mpu6050\mpu6050_dmp_6axis_motionapps20.o: ..\MPU6050\MPU6050.h
 stm32f1_mpu6050\mpu6050_dmp_6axis_motionapps20.o: F:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
+stm32f1_mpu6050\mpu6050_dmp_6axis_motionapps20.o: ..\MPU6050\MPU6050_dmp.h
 stm32f1_mpu6050\mpu6050_dmp_6axis_motionapps20.o: F:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
 stm32f1_mpu6050\mpu6050_dmp_6axis_motionapps20.o: F:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 stm32f1_mpu6050\mpu6050_dmp_6axis_motionapps20.o: ..\MPU6050\helper_3dmath.h

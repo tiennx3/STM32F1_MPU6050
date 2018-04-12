@@ -392,7 +392,12 @@ uint8_t MPU6050_dmpInitialize(void){
             MPU6050_readMemoryBlock(dmpUpdate + 3, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1]);
 
             DEBUG_PRINTLN(F("Waiting for FIFO count > 2..."));
-            while ((fifoCount = MPU6050_getFIFOCount()) < 3);
+            while (fifoCount < 3)
+							{
+								fifoCount = MPU6050_getFIFOCount();
+								HAL_Delay(1);
+								
+							}
 
             DEBUG_PRINT(F("Current FIFO count="));
             DEBUG_PRINTLN(fifoCount);

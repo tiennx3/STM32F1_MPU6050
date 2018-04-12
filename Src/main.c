@@ -1,123 +1,113 @@
-/**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  ** This notice applies to any and all portions of this file
-  * that are not between comment pairs USER CODE BEGIN and
-  * USER CODE END. Other portions of this file, whether 
-  * inserted by the user or by software development tools
-  * are owned by their respective copyright owners.
-  *
-  * COPYRIGHT(c) 2018 STMicroelectronics
-  *
-  * Redistribution and use in source and binary forms, with or without modification,
-  * are permitted provided that the following conditions are met:
-  *   1. Redistributions of source code must retain the above copyright notice,
-  *      this list of conditions and the following disclaimer.
-  *   2. Redistributions in binary form must reproduce the above copyright notice,
-  *      this list of conditions and the following disclaimer in the documentation
-  *      and/or other materials provided with the distribution.
-  *   3. Neither the name of STMicroelectronics nor the names of its contributors
-  *      may be used to endorse or promote products derived from this software
-  *      without specific prior written permission.
-  *
-  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-  * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  *
-  ******************************************************************************
-  */
+/*
+* Note :
+*		- Connecter:
+*					STM32F1      MPU6050
+*						PB6					SCL
+*						PB7					SDA
+*						PA0					INT
+*
+*		- user UART 
+*					TX     PA9
+*					RX		 PA10
+*		
+*/
+
+
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32f1xx_hal.h"
-
-/* USER CODE BEGIN Includes */
-
-/* USER CODE END Includes */
-
-/* Private variables ---------------------------------------------------------*/
-I2C_HandleTypeDef hi2c2;
+#include "MPU6050.h"
+#include "MPU6050_dmp_6axis_MotionApps20.h"
 
 UART_HandleTypeDef huart1;
-
-/* USER CODE BEGIN PV */
-/* Private variables ---------------------------------------------------------*/
-
-/* USER CODE END PV */
-
-/* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-static void MX_GPIO_Init(void);
-static void MX_I2C1_Init(void);
 static void MX_USART1_UART_Init(void);
-
-
 uint8_t check=0;
 
-/* USER CODE BEGIN PFP */
-/* Private function prototypes -----------------------------------------------*/
+// MPU6050 data value
+uint32_t read = 0;
+uint8_t devStatus;
+uint8_t mpuIntStatus; 
+DataMpu6050 MPU6050data;
+bool dmpReady = false;
+uint16_t packetSize;
 
-/* USER CODE END PFP */
 
-/* USER CODE BEGIN 0 */
+Quaternion_t q; 
+VectorFloat_t gravity;
+float ypr[3]; 
 
-/* USER CODE END 0 */
+float Yaw,Pitch,Roll;
+volatile bool mpuInterrupt = false;     // indicates whether MPU interrupt pin has gone high
+void dmpDataReady() {
+    mpuInterrupt = true;
+}
 
-/**
-  * @brief  The application entry point.
-  *
-  * @retval None
-  */
+
+uint16_t fifoCount;    
+uint8_t fifoBuffer[64];
+uint8_t buff_char[50];
+uint8_t k=0;
+
+// END MPU6050 data value
 int main(void)
 {
-  /* USER CODE BEGIN 1 */
-
-  /* USER CODE END 1 */
-
-  /* MCU Configuration----------------------------------------------------------*/
-
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
-
-  /* USER CODE BEGIN Init */
-
-  /* USER CODE END Init */
-
-  /* Configure the system clock */
   SystemClock_Config();
-
-  /* USER CODE BEGIN SysInit */
-
-  /* USER CODE END SysInit */
-
-  /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_I2C1_Init();
+	__HAL_RCC_GPIOD_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
   MX_USART1_UART_Init();
-  /* USER CODE BEGIN 2 */
+  MPU6050_Initialize(NT_MPU6050_Device_AD0_LOW,NT_MPU6050_Accelerometer_2G,NT_MPU6050_Gyroscope_2000s);
+	MPU6050address(0xD0);
+	MPU6050_initialize();
+	GPIO_Init_IRQ(GPIOA,GPIO_PIN_0,EXTI0_IRQn);
+	devStatus = MPU6050_dmpInitialize();
+	MPU6050_setXGyroOffset(220);    // value set up only MPU6050 module
+	MPU6050_setYGyroOffset(76);			// value set up only MPU6050 module
+	MPU6050_setZGyroOffset(-85);		// value set up only MPU6050 module
+	MPU6050_setZAccelOffset(1788);	// value set up only MPU6050 module
+	MPU6050_setIntEnabled(0x12);
+	if (devStatus == 0) {
+		MPU6050_setDMPEnabled(true);
+		mpuIntStatus = MPU6050_getIntStatus();
+		dmpReady = true;
+		packetSize = MPU6050_dmpGetFIFOPacketSize();
+	}
+	while(1)
+	{
+while (!mpuInterrupt && fifoCount <= packetSize);
+		mpuInterrupt = false;
+		mpuIntStatus = MPU6050_getIntStatus();
+		fifoCount = MPU6050_getFIFOCount();
+		if ((mpuIntStatus & 0x10) || fifoCount == 1024) {
+        // reset so we can continue cleanly
+        MPU6050_resetFIFO();
+			}else if (mpuIntStatus & 0x02) {
+        // wait for correct available data length, should be a VERY short wait
+        while (fifoCount < packetSize) fifoCount = MPU6050_getFIFOCount();
 
-  /* USER CODE END 2 */
-
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-
-  /* USER CODE END WHILE */
-
-  /* USER CODE BEGIN 3 */
-
-  }
-  /* USER CODE END 3 */
-
+        // read a packet from FIFO
+        MPU6050_getFIFOBytes(fifoBuffer, packetSize);
+        
+        // track FIFO count here in case there is > 1 packet available
+        // (this lets us immediately read more without waiting for an interrupt)
+        fifoCount -= packetSize;
+				
+				MPU6050_dmpGetQuaternion(&q, fifoBuffer);
+        MPU6050_dmpGetGravity(&gravity, &q);
+        MPU6050_dmpGetYawPitchRoll(ypr, &q, &gravity);
+				Yaw=ypr[0]*180/3.14;
+				Pitch=ypr[1]*180/3.14;
+				Roll=ypr[2]*180/3.14;
+				k++;
+				if(k==10)
+					{k=0;
+					sprintf((char*)buff_char,"Yaw:%0.5f\t Pitch:%0.5f\t Roll:%0.5f\r\n",Yaw,Pitch,Roll);
+					//HAL_UART_Transmit(&huart1,buff_char,sizeof(buff_char),100);
+					}
+				}
+		}
 }
 
 /**
@@ -170,26 +160,6 @@ void SystemClock_Config(void)
   HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
 }
 
-/* I2C1 init function */
-static void MX_I2C1_Init(void)
-{
-
-  hi2c2.Instance = I2C1;
-  hi2c2.Init.ClockSpeed = 400000;
-  hi2c2.Init.DutyCycle = I2C_DUTYCYCLE_2;
-  hi2c2.Init.OwnAddress1 = 0;
-  hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-  hi2c2.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-  hi2c2.Init.OwnAddress2 = 0;
-  hi2c2.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-  hi2c2.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-  if (HAL_I2C_Init(&hi2c2) != HAL_OK)
-  {
-    _Error_Handler(__FILE__, __LINE__);
-  }
-
-}
-
 /* USART1 init function */
 static void MX_USART1_UART_Init(void)
 {
@@ -206,35 +176,6 @@ static void MX_USART1_UART_Init(void)
   {
     _Error_Handler(__FILE__, __LINE__);
   }
-
-}
-
-/** Configure pins as 
-        * Analog 
-        * Input 
-        * Output
-        * EVENT_OUT
-        * EXTI
-*/
-static void MX_GPIO_Init(void)
-{
-
-  GPIO_InitTypeDef GPIO_InitStruct;
-
-  /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOD_CLK_ENABLE();
-  __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
-
-  /*Configure GPIO pin : PA0 */
-  GPIO_InitStruct.Pin = GPIO_PIN_0;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 
 }
 
@@ -278,7 +219,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	{
 		if(GPIO_Pin==GPIO_PIN_0)
 			{
-				check++;
+				read = 1;
+				dmpDataReady();
 			}
 	}
 /**
