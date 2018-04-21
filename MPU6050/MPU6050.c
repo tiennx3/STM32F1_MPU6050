@@ -328,7 +328,7 @@ void MPU6050_convert(DataMpu6050 * dataMPU6050)
     int16_t gz = dataMPU6050->NT_int_MPU6050_Gz ;
     dataMPU6050->NT_MPU6050_Ax = (double)ax/Init_MPU6050.ACCEL_LSB_t;
     dataMPU6050->NT_MPU6050_Ay = (double)ay/Init_MPU6050.ACCEL_LSB_t;
-    dataMPU6050->NT_MPU6050_Az = (double)az/Init_MPU6050.ACCEL_LSB_t;
+    dataMPU6050->NT_MPU6050_Az = ((double)az-4500)/Init_MPU6050.ACCEL_LSB_t;
     dataMPU6050->NT_MPU6050_Gx =((double)gx-MPU6050_GXOFFSET)/MPU6050_GYRO_LSB_2000;
     dataMPU6050->NT_MPU6050_Gy =((double)gy-MPU6050_GYOFFSET)/MPU6050_GYRO_LSB_2000;
     dataMPU6050->NT_MPU6050_Gz =((double)gz-MPU6050_GZOFFSET)/MPU6050_GYRO_LSB_2000;

@@ -4,7 +4,7 @@
 *					STM32F1      MPU6050
 *						PB6					SCL
 *						PB7					SDA
-*						PA0					INT
+*						PA2					INT
 *
 *		- user UART 
 *					TX     PA9
@@ -19,6 +19,10 @@
 #include "MPU6050.h"
 #include "MPU6050_dmp_6axis_MotionApps20.h"
 
+// TIM2
+TIM_HandleTypeDef htim2;
+static void MX_TIM2_Init(void);
+// END TIM2
 UART_HandleTypeDef huart1;
 void SystemClock_Config(void);
 static void MX_USART1_UART_Init(void);
@@ -31,7 +35,7 @@ uint8_t mpuIntStatus;
 DataMpu6050 MPU6050data;
 bool dmpReady = false;
 uint16_t packetSize;
-
+double A= 0.0;
 
 Quaternion_t q; 
 VectorFloat_t gravity;
@@ -46,9 +50,9 @@ void dmpDataReady() {
 
 uint16_t fifoCount;    
 uint8_t fifoBuffer[64];
-uint8_t buff_char[50];
+unsigned char buff_char[50];
 uint8_t k=0;
-
+uint8_t dataz=0;
 // END MPU6050 data value
 int main(void)
 {
@@ -58,14 +62,29 @@ int main(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
   MX_USART1_UART_Init();
+	MX_TIM2_Init();
+	HAL_TIM_Base_Start_IT(&htim2);
   MPU6050_Initialize(NT_MPU6050_Device_AD0_LOW,NT_MPU6050_Accelerometer_2G,NT_MPU6050_Gyroscope_2000s);
 	MPU6050address(0xD0);
+	//HAL_Delay(1000);
+
+//	while(1)
+//		{
+//			MPU6050_GetRawAccelTempGyro(&MPU6050data);
+//			MPU6050_convert(&MPU6050data);
+//			HAL_Delay(1000);
+//		}
 	MPU6050_initialize();
-	GPIO_Init_IRQ(GPIOA,GPIO_PIN_0,EXTI0_IRQn);
+	GPIO_Init_IRQ(GPIOA,GPIO_PIN_2,EXTI2_IRQn);
 	devStatus = MPU6050_dmpInitialize();
-	MPU6050_setXGyroOffset(220);    // value set up only MPU6050 module
-	MPU6050_setYGyroOffset(76);			// value set up only MPU6050 module
-	MPU6050_setZGyroOffset(-85);		// value set up only MPU6050 module
+	
+//	MPU6050_setXGyroOffset(220);    // value set up only MPU6050 module
+//	MPU6050_setYGyroOffset(76);			// value set up only MPU6050 module
+//	MPU6050_setZGyroOffset(-85);		// value set up only MPU6050 module
+//	MPU6050_setZAccelOffset(1788);	// value set up only MPU6050 module
+	MPU6050_setXGyroOffset(120);    // value set up only MPU6050 module
+	MPU6050_setYGyroOffset(30);			// value set up only MPU6050 module
+	MPU6050_setZGyroOffset(-52);		// value set up only MPU6050 module
 	MPU6050_setZAccelOffset(1788);	// value set up only MPU6050 module
 	MPU6050_setIntEnabled(0x12);
 	if (devStatus == 0) {
@@ -100,11 +119,16 @@ while (!mpuInterrupt && fifoCount <= packetSize);
 				Yaw=ypr[0]*180/3.14;
 				Pitch=ypr[1]*180/3.14;
 				Roll=ypr[2]*180/3.14;
+				MPU6050_GetRawAccelTempGyro(&MPU6050data);
+				MPU6050_convert(&MPU6050data);
+				A= sqrt((MPU6050data.NT_MPU6050_Ax*MPU6050data.NT_MPU6050_Ax)+(MPU6050data.NT_MPU6050_Ay*MPU6050data.NT_MPU6050_Ay)+(MPU6050data.NT_MPU6050_Az*MPU6050data.NT_MPU6050_Az));
+				
 				k++;
 				if(k==10)
 					{k=0;
-					sprintf((char*)buff_char,"Yaw:%0.5f\t Pitch:%0.5f\t Roll:%0.5f\r\n",Yaw,Pitch,Roll);
-					//HAL_UART_Transmit(&huart1,buff_char,sizeof(buff_char),100);
+					sprintf((char*)buff_char,"%0.1f %0.1f %0.1f %0.1f %0.1f %0.1f %0.3f\r\n",MPU6050data.NT_MPU6050_Ax,MPU6050data.NT_MPU6050_Ay,MPU6050data.NT_MPU6050_Az,Roll,Pitch,Yaw,A);
+					dataz = strlen((char*)buff_char) ;
+					HAL_UART_Transmit(&huart1,buff_char,dataz,100);
 					}
 				}
 		}
@@ -128,7 +152,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
+  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL6;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
@@ -159,6 +183,41 @@ void SystemClock_Config(void)
   /* SysTick_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
 }
+
+/* TIM2 init function */
+static void MX_TIM2_Init(void)
+{
+
+  TIM_ClockConfigTypeDef sClockSourceConfig;
+  TIM_MasterConfigTypeDef sMasterConfig;
+
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 36000;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 2000;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+}
+
+
 
 /* USART1 init function */
 static void MX_USART1_UART_Init(void)
@@ -217,10 +276,20 @@ void assert_failed(uint8_t* file, uint32_t line)
 #endif /* USE_FULL_ASSERT */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	{
-		if(GPIO_Pin==GPIO_PIN_0)
+		if(GPIO_Pin==GPIO_PIN_2)
 			{
 				read = 1;
 				dmpDataReady();
+			}
+	}
+	
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+	{
+		if(htim->Instance == htim2.Instance)
+			{
+//				uint8_t buff_char[30];
+//				sprintf((char*)buff_char,"Yaw: \t Pitch: \t Roll: \r\n");
+//				HAL_UART_Transmit(&huart1,buff_char,strlen((char*)buff_char),100);
 			}
 	}
 /**
