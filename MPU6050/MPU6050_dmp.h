@@ -484,6 +484,20 @@ typedef struct dataMPU6050_dmp_t {
 	   double Az;
 } dataMPU6050_dmp_t;
 
+
+typedef struct data_MPU6050_t {
+	  double a;
+    double ax;
+    double ay;
+		double az;
+		double gx;
+    double gy;
+		double gz;
+		double roll_x;
+		double pitch_y;
+		double yaw_z;
+} data_MPU6050_t;
+
 void MPU6050address(uint8_t address);
 
 

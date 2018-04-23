@@ -18,10 +18,17 @@
 #include "stm32f1xx_hal.h"
 #include "MPU6050.h"
 #include "MPU6050_dmp_6axis_MotionApps20.h"
-
+bool Debug_app = true ;
 // TIM2
 TIM_HandleTypeDef htim2;
 static void MX_TIM2_Init(void);
+void timer_enabel(TIM_HandleTypeDef *htim);
+void time_disabel(TIM_HandleTypeDef *htim);
+void enabelcheck(void);
+void disabel_check(void);
+bool intimecheck = false;
+uint8_t time_count=0;
+static void MX_GPIO_Init(void);
 // END TIM2
 UART_HandleTypeDef huart1;
 void SystemClock_Config(void);
@@ -33,20 +40,50 @@ uint32_t read = 0;
 uint8_t devStatus;
 uint8_t mpuIntStatus; 
 DataMpu6050 MPU6050data;
+
+typedef enum {
+	KHONG_NGA = 0x00,
+	NGA = 0x01,   
+	NGA_NGUA = 0x02,  
+	NGA_SAP = 0x03,
+	NGA_TRAI= 0x04,
+	NGA_PHAI= 0x05,
+} NT_nga_t;
+
+NT_nga_t Loai_nga = KHONG_NGA;
+
+
+int8_t a_status = 0;
+int8_t ax_status = 0;
+int8_t ay_status = 0;
+int8_t az_status = 0;
+int8_t gx_status = 0;
+int8_t gy_status = 0;
+int8_t gz_status = 0;
+int8_t roll_x_status = 0;
+int8_t pitch_y_status = 0;
+int8_t yaw_z_status = 0;
+double Pitch_y;
+double Roll_x;
+double ax;
+double ay;
+double az;
+double a ;
 bool dmpReady = false;
 uint16_t packetSize;
 double A= 0.0;
-
+data_MPU6050_t data_offset;
 Quaternion_t q; 
 VectorFloat_t gravity;
 float ypr[3]; 
-
+bool Getdata_offset = true;
 float Yaw,Pitch,Roll;
 volatile bool mpuInterrupt = false;     // indicates whether MPU interrupt pin has gone high
 void dmpDataReady() {
     mpuInterrupt = true;
 }
-
+void reset_status(void);
+void check_status (void);
 
 uint16_t fifoCount;    
 uint8_t fifoBuffer[64];
@@ -61,9 +98,10 @@ int main(void)
 	__HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+	MX_GPIO_Init();
   MX_USART1_UART_Init();
 	MX_TIM2_Init();
-	HAL_TIM_Base_Start_IT(&htim2);
+	//HAL_TIM_Base_Start_IT(&htim2);
   MPU6050_Initialize(NT_MPU6050_Device_AD0_LOW,NT_MPU6050_Accelerometer_2G,NT_MPU6050_Gyroscope_2000s);
 	MPU6050address(0xD0);
 	//HAL_Delay(1000);
@@ -82,7 +120,7 @@ int main(void)
 //	MPU6050_setYGyroOffset(76);			// value set up only MPU6050 module
 //	MPU6050_setZGyroOffset(-85);		// value set up only MPU6050 module
 //	MPU6050_setZAccelOffset(1788);	// value set up only MPU6050 module
-	MPU6050_setXGyroOffset(120);    // value set up only MPU6050 module
+	MPU6050_setXGyroOffset(95);    // value set up only MPU6050 module
 	MPU6050_setYGyroOffset(30);			// value set up only MPU6050 module
 	MPU6050_setZGyroOffset(-52);		// value set up only MPU6050 module
 	MPU6050_setZAccelOffset(1788);	// value set up only MPU6050 module
@@ -93,45 +131,315 @@ int main(void)
 		dmpReady = true;
 		packetSize = MPU6050_dmpGetFIFOPacketSize();
 	}
+	HAL_Delay(10000);
 	while(1)
 	{
-while (!mpuInterrupt && fifoCount <= packetSize);
-		mpuInterrupt = false;
-		mpuIntStatus = MPU6050_getIntStatus();
-		fifoCount = MPU6050_getFIFOCount();
-		if ((mpuIntStatus & 0x10) || fifoCount == 1024) {
-        // reset so we can continue cleanly
-        MPU6050_resetFIFO();
-			}else if (mpuIntStatus & 0x02) {
-        // wait for correct available data length, should be a VERY short wait
-        while (fifoCount < packetSize) fifoCount = MPU6050_getFIFOCount();
-
-        // read a packet from FIFO
-        MPU6050_getFIFOBytes(fifoBuffer, packetSize);
-        
-        // track FIFO count here in case there is > 1 packet available
-        // (this lets us immediately read more without waiting for an interrupt)
-        fifoCount -= packetSize;
-				
-				MPU6050_dmpGetQuaternion(&q, fifoBuffer);
-        MPU6050_dmpGetGravity(&gravity, &q);
-        MPU6050_dmpGetYawPitchRoll(ypr, &q, &gravity);
-				Yaw=ypr[0]*180/3.14;
-				Pitch=ypr[1]*180/3.14;
-				Roll=ypr[2]*180/3.14;
-				MPU6050_GetRawAccelTempGyro(&MPU6050data);
-				MPU6050_convert(&MPU6050data);
-				A= sqrt((MPU6050data.NT_MPU6050_Ax*MPU6050data.NT_MPU6050_Ax)+(MPU6050data.NT_MPU6050_Ay*MPU6050data.NT_MPU6050_Ay)+(MPU6050data.NT_MPU6050_Az*MPU6050data.NT_MPU6050_Az));
-				
-				k++;
-				if(k==10)
-					{k=0;
-					sprintf((char*)buff_char,"%0.1f %0.1f %0.1f %0.1f %0.1f %0.1f %0.3f\r\n",MPU6050data.NT_MPU6050_Ax,MPU6050data.NT_MPU6050_Ay,MPU6050data.NT_MPU6050_Az,Roll,Pitch,Yaw,A);
-					dataz = strlen((char*)buff_char) ;
-					HAL_UART_Transmit(&huart1,buff_char,dataz,100);
+		while (!mpuInterrupt && fifoCount <= packetSize);
+				mpuInterrupt = false;
+				mpuIntStatus = MPU6050_getIntStatus();
+				fifoCount = MPU6050_getFIFOCount();
+				if ((mpuIntStatus & 0x10) || fifoCount == 1024) {
+						// reset so we can continue cleanly
+						MPU6050_resetFIFO();
+						}else if (mpuIntStatus & 0x02) {
+								// wait for correct available data length, should be a VERY short wait
+								while (fifoCount < packetSize) fifoCount = MPU6050_getFIFOCount();
+								// read a packet from FIFO
+								MPU6050_getFIFOBytes(fifoBuffer, packetSize);
+								// track FIFO count here in case there is > 1 packet available
+								// (this lets us immediately read more without waiting for an interrupt)
+								fifoCount -= packetSize;
+								MPU6050_dmpGetQuaternion(&q, fifoBuffer);
+								MPU6050_dmpGetGravity(&gravity, &q);
+								MPU6050_dmpGetYawPitchRoll(ypr, &q, &gravity);
+								Yaw=ypr[0]*180/3.14;
+								Pitch=ypr[1]*180/3.14;
+								Roll=ypr[2]*180/3.14;
+								MPU6050_GetRawAccelTempGyro(&MPU6050data);
+								MPU6050_convert(&MPU6050data);
+								A= sqrt((MPU6050data.NT_MPU6050_Ax*MPU6050data.NT_MPU6050_Ax)+(MPU6050data.NT_MPU6050_Ay*MPU6050data.NT_MPU6050_Ay)+(MPU6050data.NT_MPU6050_Az*MPU6050data.NT_MPU6050_Az));
+								if(Getdata_offset == false)
+								{
+									if(intimecheck == true)
+									{
+										Pitch_y = Pitch-data_offset.pitch_y;
+										Roll_x = Roll-data_offset.roll_x;
+										ax = MPU6050data.NT_MPU6050_Ax - data_offset.ax;
+										ay = MPU6050data.NT_MPU6050_Ay - data_offset.ay;
+										az = MPU6050data.NT_MPU6050_Az - data_offset.az;	
+										a = A - data_offset.a;	
+										// pitch-y
+										if(pitch_y_status ==0){
+											if(Pitch_y >45)
+											{
+												pitch_y_status=1;
+											}
+											if(Pitch_y <-45)
+											{
+												pitch_y_status=-1;
+											}
+										}
+										// roll x
+										if(roll_x_status ==0){
+											if(Roll_x >60)
+											{
+												roll_x_status=1;
+											}
+											if(Roll_x <-60)
+											{
+												roll_x_status=-1;
+											}
+										}
+										
+										// ax
+										if(ax_status ==0){
+											if(ax>0.7)
+											{
+												ax_status = 1;
+											}
+											if(ax<-0.7)
+											{
+												ax_status = -1;
+											}
+										}
+										// ay
+										if(ay_status ==0){
+											if(ay>0.7)
+											{
+												ay_status = 1;
+											}
+											if(ay<-0.7)
+											{
+												ay_status = -1;
+											}
+										}
+										// az
+										if(az_status ==0){
+											if(az>0.7)
+											{
+												az_status = 1;
+											}
+											if(az<-0.7)
+											{
+												az_status = -1;
+											}
+										}
+										if(a_status ==0){
+											if(a>0.5)
+											{
+												a_status = 1;
+											}
+										}
+									}
+									else  // check tung gia tri de bat timer 
+									{
+										Pitch_y = Pitch-data_offset.pitch_y;
+										Roll_x = Roll-data_offset.roll_x;
+										ax = MPU6050data.NT_MPU6050_Ax - data_offset.ax;
+										ay = MPU6050data.NT_MPU6050_Ay - data_offset.ay;
+										az = MPU6050data.NT_MPU6050_Az - data_offset.az;	
+										a = A - data_offset.a;	
+											if(Pitch_y >45)
+											{
+												pitch_y_status=1;
+												enabelcheck();
+											} else {
+														if(Pitch_y <-45)
+														{
+															pitch_y_status=-1;
+															enabelcheck();
+														} else {
+																if(Roll_x >60)   // roll
+																	{
+																		roll_x_status=1;
+																		enabelcheck();
+																	} else {
+																		if(Roll_x <-60)
+																		{
+																			roll_x_status=-1;
+																			enabelcheck();
+																		} else {
+																			if(a>0.4)
+																			{
+																				a_status = 1;
+																				enabelcheck();
+																			}
+//																		} else {
+//																				// ax
+//																				if(ax>0.7)
+//																				{
+//																					ax_status = 1;
+//																					enabelcheck();
+//																				}else 
+//																				{
+//																						if(ax<-0.7)
+//																						{
+//																							ax_status = -1;
+//																							enabelcheck();
+//																						} else {
+//																								// ay
+//																								if(ay>0.7)
+//																								{
+//																									ay_status = 1;
+//																									enabelcheck();
+//																								} else {
+//																										if(ay<-0.7)
+//																										{
+//																											ay_status = -1;
+//																											enabelcheck();
+//																										} else {
+//																												// az
+//																												if(az>0.7)
+//																												{
+//																													az_status = 1;
+//																													enabelcheck();
+//																												} else {
+//																														if(az<-0.7)
+//																														{
+//																															az_status = -1;
+//																															enabelcheck();
+//																														} else {
+//																																if(a>0.4)
+//																																	{
+//																																		a_status = 1;
+//																																		enabelcheck();
+//																																	}
+//																														}
+//																												}	
+//																										}			
+//																								}
+//																							}
+//																					}
+																		}
+																}
+														}
+											}	
+											
+									}
+								}
+								if(Getdata_offset == true)
+								{
+									data_offset.a = A;
+									data_offset.ax = MPU6050data.NT_MPU6050_Ax;
+									data_offset.ay = MPU6050data.NT_MPU6050_Ay;
+									data_offset.az = MPU6050data.NT_MPU6050_Az;
+									data_offset.gx = MPU6050data.NT_MPU6050_Gx;
+									data_offset.gy = MPU6050data.NT_MPU6050_Gy;
+									data_offset.gz = MPU6050data.NT_MPU6050_Gz;
+									data_offset.roll_x = Roll;
+									data_offset.pitch_y = Pitch;
+									data_offset.yaw_z = Yaw;
+									Getdata_offset = false;
+								}
+								if(Debug_app == true)
+								{
+										k++;
+										if(k==10)
+											{k=0;
+											//sprintf((char*)buff_char,"%0.2f %0.2f %0.2f %0.1f %0.1f %0.1f %0.3f\r\n",MPU6050data.NT_MPU6050_Ax*30,MPU6050data.NT_MPU6050_Ay*30,MPU6050data.NT_MPU6050_Az*30,Roll,Pitch,Yaw,A*30);
+											dataz = strlen((char*)buff_char) ;
+											//HAL_UART_Transmit(&huart1,buff_char,dataz,100);
+											}
+								}
 					}
-				}
-		}
+		}	
+}
+
+void check_status (void)
+	{
+		if(a_status ==1)
+			{
+				//if(ax_status ==1 )
+				if( pitch_y_status ==1)
+					{
+//						if(ay_status==1)
+//						{
+//							Loai_nga=NGA_NGUA;
+//							disabel_check();
+//						} else if(ay_status == -1)
+//						{
+//							Loai_nga=NGA_SAP;
+//							disabel_check();
+//						} else { // ay ==0
+//								if(az_status == -1)  
+//								{
+//									Loai_nga=NGA_PHAI;
+//									disabel_check();
+//								}else if(az_status == 1)   // ay ==0
+//								{
+//									Loai_nga=NGA_TRAI;
+//									disabel_check();
+//								} else {
+//									Loai_nga=NGA;
+//									disabel_check();
+//								}
+//						}
+						if(roll_x_status ==1)
+						{
+							Loai_nga = NGA_NGUA;
+						}
+						if(roll_x_status ==-1)
+						{
+							Loai_nga = NGA_SAP;
+						}
+						if(roll_x_status ==0)
+						{
+							if(az_status == -1)  
+								{
+									Loai_nga=NGA_PHAI;
+									disabel_check();
+								}else if(az_status == 1)   // ay ==0
+								{
+									Loai_nga=NGA_TRAI;
+									disabel_check();
+								} else {
+									Loai_nga=NGA;
+									disabel_check();
+								}
+						}
+					}
+			}
+	}
+
+
+
+void enabelcheck(void)
+	{
+		intimecheck = true;
+		timer_enabel(&htim2);
+	}
+void disabel_check(void)
+	{
+		intimecheck = false;
+		time_disabel(&htim2);
+	}
+
+void timer_enabel(TIM_HandleTypeDef *htim)
+	{
+		assert_param(IS_TIM_INSTANCE(htim->Instance));
+		__HAL_TIM_ENABLE(htim);
+		__HAL_TIM_ENABLE_IT(htim, TIM_IT_UPDATE);
+	}
+void time_disabel(TIM_HandleTypeDef *htim)
+	{
+		assert_param(IS_TIM_INSTANCE(htim->Instance));
+		__HAL_TIM_DISABLE_IT(htim, TIM_IT_UPDATE);
+		__HAL_TIM_DISABLE(htim);
+	}
+
+void reset_status(void)
+{
+	a_status = 0;
+	ax_status = 0;
+	ay_status = 0;
+	az_status = 0;
+	gx_status = 0;
+	gy_status = 0;
+	gz_status = 0;
+	roll_x_status = 0;
+	pitch_y_status = 0;
+	yaw_z_status = 0;
+	Loai_nga= KHONG_NGA;
 }
 
 /**
@@ -183,7 +491,26 @@ void SystemClock_Config(void)
   /* SysTick_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
 }
+static void MX_GPIO_Init(void)
+{
 
+  GPIO_InitTypeDef GPIO_InitStruct;
+
+  /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0|GPIO_PIN_1, GPIO_PIN_SET);
+
+  /*Configure GPIO pins : PB0 PB1 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+}
 /* TIM2 init function */
 static void MX_TIM2_Init(void)
 {
@@ -290,6 +617,33 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 //				uint8_t buff_char[30];
 //				sprintf((char*)buff_char,"Yaw: \t Pitch: \t Roll: \r\n");
 //				HAL_UART_Transmit(&huart1,buff_char,strlen((char*)buff_char),100);
+				time_count++;
+				if(time_count >=4)
+					{
+						time_count =0;
+						check_status();
+						if(Loai_nga == NGA_NGUA)
+						{
+							sprintf((char*)buff_char,"@0000000001 NGA_NGUA^\r\n");
+						}
+						if(Loai_nga == NGA_SAP)
+						{
+							sprintf((char*)buff_char,"@0000000001 NGA_SAP^\r\n");
+						}
+						if(Loai_nga == NGA_PHAI)
+						{
+							sprintf((char*)buff_char,"@0000000001 NGA_PHAI^\r\n");
+						}
+						if(Loai_nga == NGA_TRAI)
+						{
+							sprintf((char*)buff_char,"@0000000001 NGA_TRAI^\r\n");
+						}
+						//sprintf((char*)buff_char,"a: %d\t ax: %d\t ay: %d\t az: %d\r\n",a_status,ax_status,ay_status,az_status);
+						HAL_UART_Transmit(&huart1,buff_char,strlen((char*)buff_char),100);
+						disabel_check();
+						reset_status();
+					}
+				
 			}
 	}
 /**
